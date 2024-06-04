@@ -1,10 +1,10 @@
 === Gravity Forms Klaviyo ===
-Contributors: EFE Technology
+Contributors: EFE Technology, DaPo
 Donate link: http://efe.com.vn
 Tags: klaviyo,gravity forms,forms
 Requires at least: 4.0
-Tested up to: 4.9
-Stable tag: 4.0.1
+Tested up to: 6.5.3
+Stable tag: 6.5.3
 License: GPLv2 or later
 
 Easily integrate Klaviyo with your Gravity Forms.
@@ -21,11 +21,21 @@ If you use Klaviyo email service and the Gravity Forms plugin, you’re going to
 
 Integrate your Gravity Forms forms so that when users submit a form entry, the entries get added to Klaviyo. Link Email, First Name, Last Name with Klaviyo!
 
+== Screenshots ==
+
+1. You can easily configure the field mapping for export to Klaviyo using Feeds.
+2. View of the Gravity Forms Klaviyo Settings screen.
+3. View of Form Feeds. You can have multiple feeds for each form.
+
 == Installation ==
 
 Upload the Gravity Forms Klaviyo plugin to your blog, Activate it, then enter your Klaviyo public API key and private API key.
 
 == Changelog ==
 
-= 1.0 =
+= 2.0 =
+Update to Klaviyo API v3
+= 1.1 =
+Update Klaviyo API v2
+= 1.1 =
 * Tested for support for Wordpress 4.9.1
