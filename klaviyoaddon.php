@@ -3,9 +3,9 @@
 Plugin Name: Gravity Forms Klaviyo Add-On
 Plugin URI: http://www.gravityforms.com
 Description: Integrates Gravity Forms with Klaviyo allowing form submissions to be automatically sent to your Klaviyo account.
-Version: 1.0
+Version: 2.0
 Author: EFE Technology
-Author URI: http://efe.com.vn/
+Updated by: DaPo
 */
 
 require_once('includes/Klaviyo.php');
