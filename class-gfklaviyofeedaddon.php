@@ -16,7 +16,7 @@ class GFKlaviyoAPI extends GFFeedAddOn {
 
 	/**
 	 * Get an instance of this class.
-	 *
+	 * 
 	 * @return GFKlaviyoAPI
 	 */
 	public static function get_instance() {
@@ -70,31 +70,92 @@ class GFKlaviyoAPI extends GFFeedAddOn {
 
 		}
 
+		
 		// Send the values to the third-party service.
         if ($this->get_plugin_setting('api_key')) {
             $tracker = new Klaviyo($this->get_plugin_setting('api_key'));
+
+            $properties=array('$email' => $merge_vars['email'], '$first_name' => $merge_vars['first_name'], '$last_name' => $merge_vars['last_name'], '$organization' => $merge_vars['organization']);
+            
+            $properties=array_merge($properties, $merge_vars);
+         
             $tracker->track (
                 'Active on Site',
-                array('$email' => $merge_vars['email'], '$first_name' => $merge_vars['first_name'], '$last_name' => $merge_vars['last_name'])
+                $properties
+                
             // array('Item SKU' => 'ABC123', 'Payment Method' => 'Credit Card'),
             // 1354913220
             );
         }
-
+        
         if ($this->get_plugin_setting('private_api_key')) {
-        	$url = 'https://a.klaviyo.com/api/v1/list/' .$list_id. '/members';
+        	
+        	$url = 'https://a.klaviyo.com/api/profile-subscription-bulk-create-jobs/';
 
-        	wp_remote_post($url,array(
-        		'body' => array(
-        			'api_key' => $this->get_plugin_setting('private_api_key'),
-        			'email' => $merge_vars['email'],
-        			'properties' => json_encode(array(
-        				'$first_name' => $merge_vars['first_name'],
-        				'$last_name' => $merge_vars['last_name']
-        			)),
-        			'confirm_optin' => 'false'
-        		)
-        	));
+			$api_klaviyo_key = $this->get_plugin_setting('api_key');
+			$api_private_key = $this->get_plugin_setting('private_api_key');
+			
+			$post_data = [
+				"data" => [
+					"type" => "profile-subscription-bulk-create-job",
+					"attributes" => [
+						"custom_source" => "GravityForms: " . $form['title'],
+						"profiles" => [
+							"data" => [
+								[
+									"type" => "profile",
+									"attributes" => [
+										"email" => $merge_vars['email'],
+										"subscriptions" => [
+											"email" => [
+												"marketing" => ["consent" => "SUBSCRIBED"],
+											],
+										],
+									],
+								],
+							],
+						],
+					],
+					"relationships" => [
+						"list" => ["data" => ["type" => "list", "id" => $list_id]],
+					],
+				],
+			];
+			
+			
+			
+			/*if(isset($merge_vars['first_name']))
+				$post_data['profiles'][0]['$first_name'] = $merge_vars['first_name'];
+
+			if(isset($merge_vars['last_name']))
+				$post_data['profiles'][0]['$last_name'] = $merge_vars['last_name'];
+			
+			if(isset($merge_vars['organization']))
+				$post_data['profiles'][0]['$organization'] = $merge_vars['organization'];
+			*/
+			
+			$post_data_encoded = json_encode($post_data);
+			
+			$postArgs = array(
+				'method' => 'POST',
+				'headers' => [
+					'Authorization' => 'Klaviyo-API-Key '.$api_private_key,
+					'accept' => 'application/json',
+					'content-type' => 'application/json',
+					'revision' => '2024-05-15',
+				],
+				'body' => $post_data_encoded,
+			);
+			
+        	$response = wp_safe_remote_post($url, $postArgs);
+			
+			//If the Klaviyo API returns a code anything other than OK, log it!
+			if($response['response']['code'] != 202) {
+				$this->log_error( __METHOD__ . '(): Could not add user to mailing list' );
+				$this->log_error( __METHOD__ . '(): response => ' . print_r( $response, true ) );
+				$this->log_error( __METHOD__ . '(): post_data => ' . print_r( $postArgs, true ) );
+			}
+        	
         }
 	}
 
@@ -196,6 +257,12 @@ class GFKlaviyoAPI extends GFFeedAddOn {
                                 'label'    => esc_html__( 'Last Name', 'klaviyoaddon' ),
                                 'required' => true
                             ),
+							array(
+                                'name'     => 'organization',
+                                'label'    => esc_html__( 'Organization', 'klaviyoaddon' ),
+                                'required' => false
+                            ),
+                            
 						),
 					),
 					array(
@@ -256,35 +323,83 @@ class GFKlaviyoAPI extends GFFeedAddOn {
                 'value' => ''
             )
         );
-
-        /* If Klaviyo API credentials are invalid, return the lists array. */
+		
+		
+		/* If Klaviyo API credentials are invalid, return the lists array. */
         //        if ( ! $this->initialize_api() ) {
         //            return $lists;
         //        }
 
         $private_key = $this->get_plugin_setting('private_api_key');
+		
+		if ($private_key) {
 
-        if ($private_key) {
-			$url = 'https://a.klaviyo.com/api/v1/lists?api_key=' . $private_key;
-	       	$response = wp_remote_get($url);
+			
+			$args =  array(
+				'headers'  => [
+					'Authorization' => 'Klaviyo-API-Key '. $private_key,
+					'accept' => 'application/json',
+					'revision' => '2024-05-15',
+				],
+			
+			);
+			
+			
+			$url = 'https://a.klaviyo.com/api/lists/';
+		
+$results = array();
+$url = 'https://a.klaviyo.com/api/lists/?page[cursor]=';
+$keep_going = true;
+while ( $keep_going ) {
+    $request = wp_remote_get( $url, $args ); // This assumes you've set $args previously
+	
+	//print_r($request);
 
-	       	$data = json_decode($response['body']);
+    if ( is_wp_error( $request ) ) {
+        // Error out.
+        $keep_going = false;
+    }
+    if ( $keep_going ) {
+        $status = wp_remote_retrieve_response_code($request);
+        if ( 200 != $status ) {
+            // Not a valid response.
+            $keep_going = false;
+        }
+    }
+    if ( $keep_going ) {
+        $data = wp_remote_retrieve_body($request);
+        $body = json_decode($request['body'], true);
+		
+		//print_r($body);
+		
+		$ac_lists = $body["data"];
 
-            /* Get available Klaviyo lists. */
-	        $ac_lists = $data->data;
+        foreach ($ac_lists as $datapoint) {
+            array_push($results, $datapoint);
+			
+        }
+		//print_r($body["data"]);
+        // URL for the next pass through the while() loop
+        $url = $body['links']['next'];
+		
 
-	        /* Add Klaviyo lists to array and return it. */
-	        $lists = array();
-            foreach ( $ac_lists as $list ) {
-                if ($list->list_type == 'list') {
-                    $lists[] = array(
-                        'label' => $list->name,
-                        'value' => $list->id
-                    );
-                }
+    }
+}	//print_r($results);
+			
+			$lists = array();
+			$i = 0;
+			foreach ( $results as $list ) {
+			
+             //print_r($list[$i]);
+				
+	            $lists[$i] = array(
+	                'label' => $list["attributes"]["name"],
+	                'value' => $list["id"]
+	            );
+                $i++;
+				//print_r($i);
             }
         }
-
        return $lists;
     }
 }
