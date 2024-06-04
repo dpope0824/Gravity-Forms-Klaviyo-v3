@@ -1,6 +1,5 @@
 === Gravity Forms Klaviyo ===
 Contributors: EFE Technology, DaPo
-Donate link: http://efe.com.vn
 Tags: klaviyo,gravity forms,forms
 Requires at least: 4.0
 Tested up to: 6.5.3
