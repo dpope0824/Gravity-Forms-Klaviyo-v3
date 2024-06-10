@@ -10,7 +10,7 @@ Updated by: DaPo
 
 require_once('includes/Klaviyo.php');
 
-define( 'GF_KLAVIYO_API_VERSION', '2.0' );
+define( 'GF_KLAVIYO_API_VERSION', '3.0' );
 
 add_action( 'gform_loaded', array( 'GF_KLAVIYO_API', 'load' ), 5 );
 
