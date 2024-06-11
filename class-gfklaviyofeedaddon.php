@@ -82,6 +82,8 @@ class GFKlaviyoAPI extends GFFeedAddOn {
             $tracker->track (
                 'Active on Site',
                 $properties
+				
+			
                 
             // array('Item SKU' => 'ABC123', 'Payment Method' => 'Credit Card'),
             // 1354913220
@@ -90,49 +92,22 @@ class GFKlaviyoAPI extends GFFeedAddOn {
         
         if ($this->get_plugin_setting('private_api_key')) {
         	
-        	$url = 'https://a.klaviyo.com/api/profile-subscription-bulk-create-jobs/';
+        	$url = 'https://a.klaviyo.com/api/profile-import/';
 
 			$api_klaviyo_key = $this->get_plugin_setting('api_key');
 			$api_private_key = $this->get_plugin_setting('private_api_key');
 			
 			$post_data = [
-				"data" => [
-					"type" => "profile-subscription-bulk-create-job",
-					"attributes" => [
-						"custom_source" => "GravityForms: " . $form['title'],
-						"profiles" => [
-							"data" => [
-								[
-									"type" => "profile",
-									"attributes" => [
-										"email" => $merge_vars['email'],
-										"subscriptions" => [
-											"email" => [
-												"marketing" => ["consent" => "SUBSCRIBED"],
-											],
-										],
-									],
-								],
-							],
+					"data" => [
+						"type" => "profile",
+						"attributes" => [
+							"email" => $merge_vars['email'],
+							"first_name" => $merge_vars['first_name'],
+							"last_name" => $merge_vars['last_name'],
+							"organization" => $merge_vars['organization'],
 						],
 					],
-					"relationships" => [
-						"list" => ["data" => ["type" => "list", "id" => $list_id]],
-					],
-				],
-			];
-			
-			
-			
-			/*if(isset($merge_vars['first_name']))
-				$post_data['profiles'][0]['$first_name'] = $merge_vars['first_name'];
-
-			if(isset($merge_vars['last_name']))
-				$post_data['profiles'][0]['$last_name'] = $merge_vars['last_name'];
-			
-			if(isset($merge_vars['organization']))
-				$post_data['profiles'][0]['$organization'] = $merge_vars['organization'];
-			*/
+				];
 			
 			$post_data_encoded = json_encode($post_data);
 			
@@ -150,11 +125,77 @@ class GFKlaviyoAPI extends GFFeedAddOn {
         	$response = wp_safe_remote_post($url, $postArgs);
 			
 			//If the Klaviyo API returns a code anything other than OK, log it!
-			if($response['response']['code'] != 202) {
-				$this->log_error( __METHOD__ . '(): Could not add user to mailing list' );
-				$this->log_error( __METHOD__ . '(): response => ' . print_r( $response, true ) );
-				$this->log_error( __METHOD__ . '(): post_data => ' . print_r( $postArgs, true ) );
-			}
+			if(!in_array($response['response']['code'], [200, 201], true) ) {
+				$this->log_error( __METHOD__ . '(): Could not add user to mailing list not 200' );
+				//$this->log_error( __METHOD__ . '(): response => ' . print_r( $response, true ) );
+			}else{
+				$this->log_error( __METHOD__ . '(): something else' );
+				$responseIneed = json_decode($response['body'], true);
+				//$this->log_error( __METHOD__ . '(): response => ' . print_r( $responseIneed, true ) );
+				
+				
+				//
+				//Run this to subscribe after creating or updating the profile
+				//
+				
+				$url_subscribe = 'https://a.klaviyo.com/api/profile-subscription-bulk-create-jobs/';
+			
+						$post_data_subscribe = [
+							"data" => [
+								"type" => "profile-subscription-bulk-create-job",
+								"attributes" => [
+									"custom_source" => "GravityForms: " . $form['title'],
+									"profiles" => [
+										"data" => [
+											[
+												"type" => "profile",
+												"attributes" => [
+													"email" => $responseIneed['data']['attributes']['email'],
+													'id'  => $responseIneed['data']['id'],
+													"subscriptions" => [
+														"email" => [
+															"marketing" => ["consent" => "SUBSCRIBED"],
+														],
+													],
+												],
+											],
+										],
+									],
+								],
+								"relationships" => [
+									"list" => ["data" => ["type" => "list", "id" => $list_id]],
+								],
+							],
+						];
+
+
+						$post_data_subscribe_encoded = json_encode($post_data_subscribe);
+
+						$postArgsSubscribe = array(
+							'method' => 'POST',
+							'headers' => [
+								'Authorization' => 'Klaviyo-API-Key '.$api_private_key,
+								'accept' => 'application/json',
+								'content-type' => 'application/json',
+								'revision' => '2024-05-15',
+							],
+							'body' => $post_data_subscribe_encoded,
+						);
+						
+					$this->log_error( __METHOD__ . '(): response => ' . print_r( $post_data_subscribe, true ) );
+				
+				
+						$responseDeux = wp_safe_remote_post($url_subscribe, $postArgsSubscribe);
+
+						//If the Klaviyo API returns a code anything other than OK, log it!
+						if($responseDeux['response']['code'] != 202) {
+							$this->log_error( __METHOD__ . '(): Could not add user to mailing list' );
+							$this->log_error( __METHOD__ . '(): response => ' . print_r( $responseDeux, true ) );
+							$this->log_error( __METHOD__ . '(): post_data => ' . print_r( $postArgsSubscribe, true ) );
+						}
+
+
+						}
         	
         }
 	}
