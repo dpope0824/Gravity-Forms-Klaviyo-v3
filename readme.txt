@@ -32,6 +32,9 @@ Upload the Gravity Forms Klaviyo plugin to your blog, Activate it, then enter yo
 
 == Changelog ==
 
+
+= 2.1 =
+Now checks for Create/Update then if response is good, subscribes to chosen list
 = 2.0 =
 Update to Klaviyo API v3
 = 1.1 =
